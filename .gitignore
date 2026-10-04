@@ -1,0 +1,7 @@
+logs
+.vscode
+dbt_packages/
+dbt_internal_packages/
+target/
+.env
+profiles.yml
