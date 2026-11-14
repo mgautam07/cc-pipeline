@@ -1,0 +1,9 @@
+seeds:
+  - name: merchant_category
+    description: >
+      Keyword → category rules. A transaction gets mapped to oen of these categories. Add rows here when spend shows up as Uncategorized.
+    config:
+      column_types:
+        statement_name: string
+        actual_name: string
+        category: string

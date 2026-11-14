@@ -5,3 +5,5 @@ dbt_internal_packages/
 target/
 .env
 profiles.yml
+__pycache__
+.user.yml

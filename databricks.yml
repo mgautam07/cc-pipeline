@@ -1,0 +1,70 @@
+# Databricks Asset Bundle: deploys the monthly job with `databricks bundle deploy`.
+bundle:
+  name: cc-pipeline
+
+variables:
+  catalog:
+    default: credit_card
+  warehouse_id:
+    description: SQL warehouse the dbt task runs against
+    default: 905f171f28da9488
+
+sync:
+  exclude:
+    - credit_card_analytics/target/**
+    - credit_card_analytics/logs/**
+    - credit_card_analytics/profiles.yml
+
+resources:
+  jobs:
+    cc_monthly_statement:
+      name: cc-monthly-statement
+      # 07:00 IST on the 5th of every month, after statements for the previous month are out.
+      schedule:
+        quartz_cron_expression: "0 0 7 5 * ?"
+        timezone_id: Asia/Kolkata
+        pause_status: PAUSED
+      parameters:
+        - name: statement_month
+          default: ""   # YYYY-MM to backfill/re-run a month; empty = last month
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - dbt-databricks>=1.10,<2.0
+      tasks:
+        - task_key: ingest_statements
+          environment_key: default
+          spark_python_task:
+            python_file: ingestion/ingest_statements.py
+            parameters:
+              - --statement-month
+              - "{{job.parameters.statement_month}}"
+              - --catalog
+              - ${var.catalog}
+              - --bank
+              - "axis"
+          max_retries: 0
+          # Serverless tasks retry on their own (up to 3 times) unless auto-optimization is off.
+          disable_auto_optimization: true
+
+        - task_key: dbt_build
+          depends_on:
+            - task_key: ingest_statements
+          environment_key: default
+          dbt_task:
+            project_directory: credit_card_analytics
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: credit_card
+            commands:
+              - dbt deps
+              - "dbt build --vars '{statement_month: \"{{job.parameters.statement_month}}\"}'"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-1eaeb347-3a7e.cloud.databricks.com
