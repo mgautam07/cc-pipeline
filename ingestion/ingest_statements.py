@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS {table} (
     merchant        STRING,
     raw_amount      STRING,
     amount          DECIMAL(14,2) COMMENT 'Positive = charge, negative = payment/refund',
-    dr_cr       BOOLEAN       COMMENT 'True = credit, False = debit',
+    is_credit       BOOLEAN       COMMENT 'True = credit, False = debit',
     type            STRING        COMMENT 'upi or card',
     card_last4      STRING,
     ingested_at     TIMESTAMP,
@@ -51,9 +51,14 @@ def handle_bank_specifics(raw, bank):
         txn_details = F.split(F.col("`Transaction Details`"), "/")
         txn_details_length = F.size(txn_details)
         raw_amount = F.trim(F.col("`Amount (INR)`"))
+
+        merchant = F.when(txn_details_length > 1, F.trim(F.lower(F.get(txn_details, 1)))).otherwise(F.lower(F.get(txn_details, 0)))
+        merchant = F.regexp_replace(merchant, r"^cashback.*$", "cashback")
+        merchant = F.regexp_replace(merchant, r"^.*\bbus\b.*$", "bus")
+
         return (
             raw.withColumn("txn_date", F.to_date(F.trim(F.col("Date")), "dd/MM/yyyy"))
-            .withColumn("merchant", F.when(txn_details_length > 1, F.trim(F.lower(F.get(txn_details, 1)))).otherwise(F.get(txn_details, 0)))
+            .withColumn("merchant", merchant)
             .withColumn("is_credit", F.lower(F.trim(F.col("`Debit/Credit`"))) == "credit")
             .withColumn("txn_type", F.when(F.lower(F.get(txn_details, 0)) == "upi", "upi").otherwise("card"))
             .withColumn("raw_amount", raw_amount)
@@ -82,8 +87,8 @@ def read_month(spark, path, statement_month, bank):
         F.col("txn_date").alias("txn_date"),
         F.col("merchant").alias("merchant"),
         F.col("raw_amount").alias("raw_amount"),
-        F.when(F.col("is_credit") == False, -F.col("abs_amount")).otherwise(F.col("abs_amount")).alias("amount"),
-        F.col("is_credit").alias("dr_cr"),
+        F.when(F.col("is_credit") == True, -F.col("abs_amount")).otherwise(F.col("abs_amount")).alias("amount"),
+        F.col("is_credit"),
         F.col("txn_type").alias("type"),
         F.col("card_number").alias("card_last4"),
         F.current_timestamp().alias("ingested_at"),

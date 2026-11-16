@@ -56,8 +56,8 @@ resources:
           dbt_task:
             project_directory: credit_card_analytics
             warehouse_id: ${var.warehouse_id}
-            catalog: ${var.catalog}
-            schema: credit_card
+            catalog: credit_card
+            schema: data
             commands:
               - dbt deps
               - "dbt build --vars '{statement_month: \"{{job.parameters.statement_month}}\"}'"

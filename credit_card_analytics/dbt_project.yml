@@ -14,18 +14,12 @@ vars:
   # YYYY-MM of the statement to (re)process. Empty means last month; see macros/statement_month.sql
   statement_month: ""
 
-seeds:
-  # Builds seeds into '<your_schema_name>_raw'
-  credit_card_analytics:
-    +schema: raw
-
 models:
   credit_card_analytics:
     +static_analysis: strict
     # Materialize staging/intermediate models as views, and marts as tables
     staging:
       +materialized: view
-    intermediate:
-      +materialized: view
     marts:
       +materialized: table
+      +schema: marts

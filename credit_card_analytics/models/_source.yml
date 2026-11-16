@@ -1,0 +1,9 @@
+sources:
+  - name: silver
+    description: Bronze tables written by ingestion/ingest_statements.py
+    database: credit_card
+    schema: data
+    tables:
+      - name: transactions
+        description: One row per credit card statement line, replaced month by month
+        
