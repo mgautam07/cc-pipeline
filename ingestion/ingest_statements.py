@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS {table} (
     _line           BIGINT
 ) USING DELTA
 COMMENT 'Bronze: one row per credit card statement line'
+PARTITIONED BY (statement_month, bank)
 """
 
 
